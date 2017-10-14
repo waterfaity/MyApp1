@@ -45,12 +45,13 @@ class FoldableItemLayout extends FrameLayout {
 
     FoldableItemLayout(Context context) {
         super(context);
-
+        //BaseLayout中添加view
+        //显示adapter中的view 该类添加到 FoldableItemLayout 中
         baseLayout = new BaseLayout(this);
-
+        //PartView中添加view
+        // 显示baseLayout中绘制的bitmap
         topPart = new PartView(this, Gravity.TOP);
         bottomPart = new PartView(this, Gravity.BOTTOM);
-
         setInTransformation(false);
     }
 
@@ -64,7 +65,6 @@ class FoldableItemLayout extends FrameLayout {
         if (foldRotation != 0f) {
             ensureCacheBitmap();
         }
-
         super.dispatchDraw(canvas);
     }
 

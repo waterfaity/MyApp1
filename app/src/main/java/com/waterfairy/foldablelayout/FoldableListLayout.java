@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
@@ -38,6 +39,7 @@ public class FoldableListLayout extends FrameLayout {
     private static final LayoutParams PARAMS =
             new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
     private static final int MAX_CHILDREN_COUNT = 3;
+    private static final String TAG = "";
 
     private OnFoldRotationListener foldRotationListener;
     private BaseAdapter adapter;
@@ -111,6 +113,7 @@ public class FoldableListLayout extends FrameLayout {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distX, float distY) {
+                Log.i(TAG, "onScroll: " + distX + "--" + distY);
                 return FoldableListLayout.this.onScroll(e1, e2);
             }
 
@@ -467,6 +470,7 @@ public class FoldableListLayout extends FrameLayout {
 
     /**
      * 滚动
+     *
      * @param firstEvent
      * @param moveEvent
      * @return
