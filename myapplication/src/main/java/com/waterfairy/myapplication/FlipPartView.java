@@ -110,14 +110,14 @@ public class FlipPartView extends View {
                 float tempHeight = viewWidth / (bitmapWidth / bitmapHeight);
                 top = (int) ((viewHeight - tempHeight) / 2);
                 bottom = (int) (top + tempHeight);
-                if (type == TYPE_RIGHT) {
-                    // 单独使用 去除该判断
-                    left = viewWidth;
-                    right = 2 * viewWidth;
-                } else {
+//                if (type == TYPE_RIGHT) {
+//                    // 单独使用 去除该判断
+//                    left = viewWidth;
+//                    right = 2 * viewWidth;
+//                } else {
                     right = viewWidth;
                     left = 0;
-                }
+//                }
             } else if (type == TYPE_LEFT) {
                 top = 0;
                 bottom = viewHeight;
@@ -127,24 +127,24 @@ public class FlipPartView extends View {
                 top = 0;
                 bottom = viewHeight;
 //                    单独使用
-//                  left = 0;
-//                  right = (int) ((bitmapWidth / bitmapHeight) * viewHeight);
-                left = viewWidth;
-                right = (int) ((bitmapWidth / bitmapHeight) * viewHeight) + left;
+                  left = 0;
+                  right = (int) ((bitmapWidth / bitmapHeight) * viewHeight);
+//                left = viewWidth;
+//                right = (int) ((bitmapWidth / bitmapHeight) * viewHeight) + left;
             }
         } else if (direction == FlipLayout.VERTICAL) {
             if (!isBitmapWidthBig) {
                 float tempWidth = viewHeight / (bitmapHeight / bitmapWidth);
                 left = (int) ((viewWidth - tempWidth) / 2);
                 right = (int) (left + tempWidth);
-                if (type == TYPE_BOTTOM) {
-                    //单独使用 去除该判断
-                    top = viewHeight;
-                    bottom = 2 * viewHeight;
-                } else {
+//                if (type == TYPE_BOTTOM) {
+//                    //单独使用 去除该判断
+//                    top = viewHeight;
+//                    bottom = 2 * viewHeight;
+//                } else {
                     bottom = viewHeight;
                     top = 0;
-                }
+//                }
             } else if (type == TYPE_TOP) {
                 left = 0;
                 right = viewWidth;
@@ -154,10 +154,10 @@ public class FlipPartView extends View {
                 left = 0;
                 right = viewWidth;
 //                单独使用
-//                top = 0;
-//                bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth)
-                top = viewHeight;
-                bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth) + top;
+                top = 0;
+                bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth);
+//                top = viewHeight;
+//                bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth) + top;
             }
 
         }

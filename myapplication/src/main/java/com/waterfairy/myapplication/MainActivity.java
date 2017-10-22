@@ -6,9 +6,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.RotateAnimation;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "main";
     Bitmap bitmap;
     Bitmap bitmap1;
     Bitmap bitmap2;
@@ -33,22 +37,22 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    boolean istr = true;
 
     private void setView2() {
-        MyAdapter myAdapter = new MyAdapter(getResources(), new int[]{R.mipmap.hor_height,
-                R.mipmap.hor_width,
-                R.mipmap.ver_height,
-                R.mipmap.ver_width,
+        MyAdapter myAdapter = new MyAdapter(getResources(), new int[]{
                 R.mipmap.temp,
+                R.mipmap.temp6,
                 R.mipmap.temp1,
-                R.mipmap.timg});
+                R.mipmap.temp5,
+                R.mipmap.temp2,
+                R.mipmap.temp4,
+                R.mipmap.temp3
+        });
         flipLayout.setAdapter(myAdapter);
 
     }
 
     private void initPartView() {
-        bitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ver_height);
 
         partView1 = (FlipPartView) findViewById(R.id.part_view1);
         partView2 = (FlipPartView) findViewById(R.id.part_view2);
@@ -80,7 +84,39 @@ public class MainActivity extends AppCompatActivity {
         }.sendEmptyMessageDelayed(0, 500);
     }
 
+    boolean scale;
+
     public void onClick(View view) {
-        setView2();
+        int scaleRate = 1;
+        if (scale) {
+            scaleRate = 1;
+        } else {
+            scaleRate = -1;
+        }
+        scale = !scale;
+
+        Log.i(TAG, "onClick: " + scaleRate);
+//        flipLayout.setScaleX(scaleRate);
+//
+        RotateAnimation rotateAnimation = new RotateAnimation(0, 90, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        rotateAnimation.setDuration(2000);
+        rotateAnimation.setFillAfter(false);
+
+        FlipItemView belowItemView = flipLayout.getBelowItemView();
+        FlipItemView aboveItemView = flipLayout.getAboveItemView();
+
+        FlipPartView firstView = aboveItemView.getFirstView();
+        FlipPartView secondView = aboveItemView.getSecondView();
+
+        FlipPartView firstView2 = belowItemView.getFirstView();
+        FlipPartView secondView2 = belowItemView.getSecondView();
+
+        firstView.startAnimation(rotateAnimation);
+        secondView.startAnimation(rotateAnimation);
+        firstView2.startAnimation(rotateAnimation);
+        secondView2.startAnimation(rotateAnimation);
+        aboveItemView.setAnimation(rotateAnimation);
+        belowItemView.setAnimation(rotateAnimation);
+//        flipLayout.startAnimation(rotateAnimation);
     }
 }

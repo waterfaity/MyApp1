@@ -28,6 +28,14 @@ public class MyAdapter implements FlipAdapter {
 
     @Override
     public Bitmap getBitmap(int position) {
-        return BitmapFactory.decodeResource(resources,resIds[position]);
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(resources, resIds[position], options);
+        int height = options.outHeight * 540 / options.outWidth;
+        options.outWidth = 540;
+        options.outHeight = height;
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeResource(resources, resIds[position], options);
     }
 }

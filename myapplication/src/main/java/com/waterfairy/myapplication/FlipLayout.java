@@ -3,7 +3,6 @@ package com.waterfairy.myapplication;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -14,9 +13,6 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * user : water_fairy
@@ -37,12 +33,13 @@ public class FlipLayout extends FrameLayout {
     public static final int VERTICAL = 1;
     private int direction;//方向
     private GestureDetector gestureDetector;//收拾监听
-    private List<Integer> cacheNumList = new ArrayList<>();
     private LruCache<Integer, Bitmap> lruCache;//缓存
     private int cacheNum = 3;//最小1
     private FlipAdapter adapter;
     private int currentPos;//当前位置
     private float scrollRate;//滑动rate  -1 0 1
+    private int cacheNextPos;//显示下个图像
+    private boolean ignoreMinLen;//忽略最小距离
 
 
     public FlipLayout(@NonNull Context context) {
@@ -68,54 +65,16 @@ public class FlipLayout extends FrameLayout {
     private void initLruCache() {
         long maxMemory = Runtime.getRuntime().maxMemory();
         int cacheSize = (int) (maxMemory / 8);
-        lruCache = new LruCache<Integer, Bitmap>(cacheSize) {
-            @Override
-            protected int sizeOf(Integer key, Bitmap bitmap) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {   //API 19
-                    return bitmap.getAllocationByteCount();
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) { //API 12
-                    return bitmap.getByteCount();
-                }
-                return bitmap.getRowBytes() * bitmap.getHeight();                //earlier version
-            }
-        };
+        lruCache = new LruCache<>(cacheSize);
     }
 
-    private void cacheBitmap(int index, Bitmap cacheBitmap) {
-        for (int i = 0; cacheNumList.size() >= cacheNum && i < cacheNumList.size(); i++) {
-            Integer cacheIndex = cacheNumList.get(i);
-            if (Math.abs(cacheIndex - index) > (cacheNum / 2)) {
-                //取出数据bitmap
-                Bitmap bitmap = lruCache.get(cacheIndex);
-                if (bitmap != null) {
-                    if (!bitmap.isRecycled()) {
-                        bitmap.recycle();
-                        bitmap = null;
-                        System.gc();
-                    }
-                    lruCache.remove(i);
-                    cacheNumList.remove(i);
-                    i = 0;
-                    Log.i(TAG, "cacheBitmap: 清除数据" + cacheIndex + " - " + index);
-                }
-
-            }
-        }
-        cacheNumList.add(index);
-        lruCache.put(index, cacheBitmap);
-        Log.i(TAG, "cacheBitmap: 保存");
-    }
-
-    private Bitmap getCacheBitmap(int index) {
-        return lruCache.get(index);
-    }
 
     private void initView(Context context) {
-        belowItemView = new FlipItemView(context);
-        aboveItemView = new FlipItemView(context);
+        belowItemView = new FlipItemView(context, false);
+        aboveItemView = new FlipItemView(context, true);
         addView(belowItemView);
         addView(aboveItemView);
-        ViewGroup.LayoutParams layoutParams = belowItemView.getLayoutParams();
+        ViewGroup.LayoutParams layoutParams = aboveItemView.getLayoutParams();
         layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
         layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
         belowItemView.setLayoutParams(layoutParams);
@@ -143,13 +102,17 @@ public class FlipLayout extends FrameLayout {
     }
 
     private boolean onUp() {
-        Log.i(TAG, "onUp: ");
-        if (scrollRate == 1) {
-            currentPos--;
-        } else if (scrollRate == -1) {
-            currentPos++;
+        ignoreMinLen = false;
+        if (scrollRate != 0) {
+            if (scrollRate == 1 && currentPos > 0) {
+                currentPos--;
+            } else if (scrollRate == -1 && currentPos < adapter.getCount() - 1) {
+                currentPos++;
+            } else {
+                return false;
+            }
+            setCurrentPos(currentPos);
         }
-        setCurrentPos(currentPos);
         return false;
     }
 
@@ -185,23 +148,32 @@ public class FlipLayout extends FrameLayout {
         } else {
             dValue = (int) (e2.getX() - e1.getX());
         }
-        if (Math.abs(dValue) >= minScrollStartLen) {
+        if ((dValue > 0 && currentPos > 0)) {
+            setCacheNextPos(currentPos - 1);
+        } else if (dValue < 0 && currentPos < adapter.getCount() - 1) {
+            setCacheNextPos(currentPos + 1);
+        }
+//        if (Math.abs(dValue) >= minScrollStartLen || ignoreMinLen) {
             //开始滑动
-            float rate = (dValue - minScrollStartLen) /
-                    (minScrollCompleteLen - minScrollStartLen);
-            if ((rate > 0 && currentPos > 0) ||
-                    (rate < 0 && currentPos < adapter.getCount() - 1)) {
+            ignoreMinLen = true;
+            float rate = dValue / minScrollCompleteLen;
+            if ((rate >= 0 && currentPos > 0) ||
+                    (rate <=0 && currentPos < adapter.getCount() - 1)) {
                 scrollRate = rate > 1 ? 1f : (rate < -1 ? -1f : rate);
                 rotationView(scrollRate);
             } else {
                 scrollRate = 0;
+                Log.i(TAG, "onScroll: ");
             }
-        }
+            Log.i(TAG, "onScroll: " + rate + "--" + ignoreMinLen + "--" + currentPos);
+//        }
         return false;
     }
 
     private void rotationView(float rate) {
         scrollRate = rate;
+        aboveItemView.rotation(rate);
+        belowItemView.rotation(rate);
     }
 
     /**
@@ -211,37 +183,38 @@ public class FlipLayout extends FrameLayout {
      */
     public void initDirection(int direction) {
         this.direction = direction;
-        aboveItemView.initData(direction);
         belowItemView.initData(direction);
+        aboveItemView.initData(direction);
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
         if (direction == VERTICAL) {
             minScrollCompleteLen = displayMetrics.heightPixels / 3;
         } else {
             minScrollCompleteLen = displayMetrics.widthPixels / 3;
         }
-        minScrollStartLen = (int) (displayMetrics.density * 10);
+        minScrollStartLen = (int) (displayMetrics.density * 20);
     }
 
     public void setAboveBitmap(Bitmap bitmap) {
         aboveItemView.setBitmap(bitmap);
-        invalidate();
+        aboveItemView.invalidate();
     }
 
     public void setBelowBitmap(Bitmap bitmap) {
         belowItemView.setBitmap(bitmap);
-        invalidate();
+        belowItemView.invalidate();
     }
 
-    @Override
-    public void dispatchDraw(Canvas canvas) {
-        Log.i(TAG, "dispatchDraw: ");
-        if (aboveItemView != null) {
-            aboveItemView.draw(canvas);
-        }
-        if (belowItemView != null) {
-            belowItemView.draw(canvas);
-        }
-    }
+//    @Override
+//    public void dispatchDraw(Canvas canvas) {
+//        super.dispatchDraw(canvas);
+//        if (belowItemView != null) {
+//            belowItemView.draw(canvas);
+//        }
+//        if (aboveItemView != null) {
+//            aboveItemView.draw(canvas);
+//        }
+//
+//    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -264,19 +237,83 @@ public class FlipLayout extends FrameLayout {
      */
     public void setAdapter(MyAdapter adapter) {
         this.adapter = adapter;
+        removeAllBindings();
         setCurrentPos(0);
+        if (adapter.getCount() >= 1) {
+            cacheNextPos = 0;
+            setCacheNextPos(1);
+        }
     }
 
+
+    /**
+     * 设置当前bitmap
+     *
+     * @param currentPos
+     */
     public void setCurrentPos(int currentPos) {
         this.currentPos = currentPos;
-        Bitmap cacheBitmap = lruCache.get(currentPos);
+        Bitmap cacheBitmap = getCacheBitmap(currentPos);
         if (cacheBitmap == null || cacheBitmap.isRecycled()) {
-            Log.i(TAG, "new bitmap " + currentPos);
             cacheBitmap = adapter.getBitmap(currentPos);
             cacheBitmap(currentPos, cacheBitmap);
-        } else {
-            Log.i(TAG, "get bitmap " + currentPos);
         }
         setAboveBitmap(cacheBitmap);
+        aboveItemView.reset();
+        belowItemView.reset();
+    }
+
+    /**
+     * 设置cache bitmap
+     *
+     * @param cacheNextPos
+     */
+    public void setCacheNextPos(int cacheNextPos) {
+        if (this.cacheNextPos == cacheNextPos) {
+            return;
+        }
+        Log.i(TAG, "setCacheNextPos: " + cacheNextPos);
+        this.cacheNextPos = cacheNextPos;
+        Bitmap cacheBitmap = getCacheBitmap(cacheNextPos);
+        if (cacheBitmap == null || cacheBitmap.isRecycled()) {
+            cacheBitmap = adapter.getBitmap(cacheNextPos);
+            cacheBitmap(cacheNextPos, cacheBitmap);
+        }
+        setBelowBitmap(cacheBitmap);
+    }
+
+    /**
+     * 缓存bitmap
+     *
+     * @param index
+     * @param cacheBitmap
+     */
+    private void cacheBitmap(int index, Bitmap cacheBitmap) {
+        lruCache.put(index, cacheBitmap);
+    }
+
+    /**
+     * 获取bitmap
+     *
+     * @param index
+     * @return
+     */
+    private Bitmap getCacheBitmap(int index) {
+        return lruCache.get(index);
+    }
+
+    /**
+     * 释放所有
+     */
+    private void removeAllBindings() {
+        lruCache.evictAll();
+    }
+
+    public FlipItemView getBelowItemView() {
+        return belowItemView;
+    }
+
+    public FlipItemView getAboveItemView() {
+        return aboveItemView;
     }
 }
