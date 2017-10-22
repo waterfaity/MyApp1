@@ -1,4 +1,4 @@
-package com.waterfairy.myapplication;
+package com.waterfairy.myapp1;
 
 import android.content.Context;
 import android.graphics.Bitmap;
