@@ -2,7 +2,6 @@ package com.waterfairy.myapplication;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -26,8 +25,8 @@ public class FlipLayout extends FrameLayout {
     private int minScrollCompleteLen;//最小滑动翻页的距离 定义为屏幕的1/3
     private int minScrollStartLen;//开始滑动的距离 10dp
     private static final String TAG = "flipLayout";
-    private FlipItemView aboveItemView;//上层view
-    private FlipItemView belowItemView;//底层view
+    private FlipItemView leftItemView;//上层view
+    private FlipItemView rightItemView;//底层view
 
     public static final int HORIZONTAL = 0;
     public static final int VERTICAL = 1;
@@ -70,15 +69,15 @@ public class FlipLayout extends FrameLayout {
 
 
     private void initView(Context context) {
-        belowItemView = new FlipItemView(context, false);
-        aboveItemView = new FlipItemView(context, true);
-        addView(belowItemView);
-        addView(aboveItemView);
-        ViewGroup.LayoutParams layoutParams = aboveItemView.getLayoutParams();
+        rightItemView = new FlipItemView(context, false);
+        leftItemView = new FlipItemView(context, true);
+        addView(rightItemView);
+        addView(leftItemView);
+        ViewGroup.LayoutParams layoutParams = leftItemView.getLayoutParams();
         layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
         layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
-        belowItemView.setLayoutParams(layoutParams);
-        aboveItemView.setLayoutParams(layoutParams);
+        rightItemView.setLayoutParams(layoutParams);
+        leftItemView.setLayoutParams(layoutParams);
 
     }
 
@@ -149,31 +148,31 @@ public class FlipLayout extends FrameLayout {
             dValue = (int) (e2.getX() - e1.getX());
         }
         if ((dValue > 0 && currentPos > 0)) {
-            setCacheNextPos(currentPos - 1);
+            setCacheNextPos(currentPos, currentPos - 1);
         } else if (dValue < 0 && currentPos < adapter.getCount() - 1) {
-            setCacheNextPos(currentPos + 1);
+            setCacheNextPos(currentPos, currentPos + 1);
         }
 //        if (Math.abs(dValue) >= minScrollStartLen || ignoreMinLen) {
-            //开始滑动
-            ignoreMinLen = true;
-            float rate = dValue / minScrollCompleteLen;
-            if ((rate >= 0 && currentPos > 0) ||
-                    (rate <=0 && currentPos < adapter.getCount() - 1)) {
-                scrollRate = rate > 1 ? 1f : (rate < -1 ? -1f : rate);
-                rotationView(scrollRate);
-            } else {
-                scrollRate = 0;
-                Log.i(TAG, "onScroll: ");
-            }
-            Log.i(TAG, "onScroll: " + rate + "--" + ignoreMinLen + "--" + currentPos);
+        //开始滑动
+        ignoreMinLen = true;
+        float rate = dValue / minScrollCompleteLen;
+        if ((rate >= 0 && currentPos > 0) ||
+                (rate <= 0 && currentPos < adapter.getCount() - 1)) {
+            scrollRate = rate > 1 ? 1f : (rate < -1 ? -1f : rate);
+            rotationView(scrollRate);
+        } else {
+            scrollRate = 0;
+            Log.i(TAG, "onScroll: ");
+        }
+        Log.i(TAG, "onScroll: " + rate + "--" + ignoreMinLen + "--" + currentPos);
 //        }
         return false;
     }
 
     private void rotationView(float rate) {
         scrollRate = rate;
-        aboveItemView.rotation(rate);
-        belowItemView.rotation(rate);
+        leftItemView.rotation(rate);
+        rightItemView.rotation(rate);
     }
 
     /**
@@ -183,8 +182,8 @@ public class FlipLayout extends FrameLayout {
      */
     public void initDirection(int direction) {
         this.direction = direction;
-        belowItemView.initData(direction);
-        aboveItemView.initData(direction);
+        rightItemView.initData(direction);
+        leftItemView.initData(direction);
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
         if (direction == VERTICAL) {
             minScrollCompleteLen = displayMetrics.heightPixels / 3;
@@ -194,24 +193,22 @@ public class FlipLayout extends FrameLayout {
         minScrollStartLen = (int) (displayMetrics.density * 20);
     }
 
-    public void setAboveBitmap(Bitmap bitmap) {
-        aboveItemView.setBitmap(bitmap);
-        aboveItemView.invalidate();
+    public void setBitmap(Bitmap bitmap1, Bitmap bitmap2) {
+        leftItemView.setBitmap(bitmap1, bitmap2);
+        rightItemView.setBitmap(bitmap1, bitmap2);
+        leftItemView.invalidate();
+        rightItemView.invalidate();
     }
 
-    public void setBelowBitmap(Bitmap bitmap) {
-        belowItemView.setBitmap(bitmap);
-        belowItemView.invalidate();
-    }
 
 //    @Override
 //    public void dispatchDraw(Canvas canvas) {
 //        super.dispatchDraw(canvas);
-//        if (belowItemView != null) {
-//            belowItemView.draw(canvas);
+//        if (rightItemView != null) {
+//            rightItemView.draw(canvas);
 //        }
-//        if (aboveItemView != null) {
-//            aboveItemView.draw(canvas);
+//        if (leftItemView != null) {
+//            leftItemView.draw(canvas);
 //        }
 //
 //    }
@@ -241,7 +238,7 @@ public class FlipLayout extends FrameLayout {
         setCurrentPos(0);
         if (adapter.getCount() >= 1) {
             cacheNextPos = 0;
-            setCacheNextPos(1);
+            setCacheNextPos(0, 1);
         }
     }
 
@@ -258,17 +255,18 @@ public class FlipLayout extends FrameLayout {
             cacheBitmap = adapter.getBitmap(currentPos);
             cacheBitmap(currentPos, cacheBitmap);
         }
-        setAboveBitmap(cacheBitmap);
-        aboveItemView.reset();
-        belowItemView.reset();
+        setBitmap(cacheBitmap, null);
+        leftItemView.reset();
+        rightItemView.reset();
     }
 
     /**
      * 设置cache bitmap
      *
+     * @param currentPos
      * @param cacheNextPos
      */
-    public void setCacheNextPos(int cacheNextPos) {
+    public void setCacheNextPos(int currentPos, int cacheNextPos) {
         if (this.cacheNextPos == cacheNextPos) {
             return;
         }
@@ -279,7 +277,8 @@ public class FlipLayout extends FrameLayout {
             cacheBitmap = adapter.getBitmap(cacheNextPos);
             cacheBitmap(cacheNextPos, cacheBitmap);
         }
-        setBelowBitmap(cacheBitmap);
+        Bitmap currentBitmap = getCacheBitmap(currentPos);
+        setBitmap(currentBitmap, cacheBitmap);
     }
 
     /**
@@ -309,11 +308,11 @@ public class FlipLayout extends FrameLayout {
         lruCache.evictAll();
     }
 
-    public FlipItemView getBelowItemView() {
-        return belowItemView;
+    public FlipItemView getRightItemView() {
+        return rightItemView;
     }
 
-    public FlipItemView getAboveItemView() {
-        return aboveItemView;
+    public FlipItemView getLeftItemView() {
+        return leftItemView;
     }
 }

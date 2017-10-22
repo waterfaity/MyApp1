@@ -1,15 +1,11 @@
 package com.waterfairy.myapplication;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.view.Gravity;
-import android.view.animation.Animation;
 import android.widget.LinearLayout;
 
 /**
@@ -21,14 +17,14 @@ import android.widget.LinearLayout;
 
 public class FlipItemView extends LinearLayout {
     private static final String TAG = "flipItemView";
-    private FlipPartView firstPart;//left  or  top
-    private FlipPartView secondPart;//right or bottom
+    private FlipPartView belowPart;//below
+    private FlipPartView abovePart;//above
     private int direction;//方向
-    private boolean isAbove;//上层view
+    private boolean isLeft;//上层view
 
-    public FlipItemView(@NonNull Context context, boolean isAbove) {
+    public FlipItemView(@NonNull Context context, boolean isLeft) {
         this(context, null);
-        this.isAbove = isAbove;
+        this.isLeft = isLeft;
     }
 
     public FlipItemView(@NonNull Context context, int direction) {
@@ -39,8 +35,8 @@ public class FlipItemView extends LinearLayout {
 
     public FlipItemView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        firstPart = new FlipPartView(context);
-        secondPart = new FlipPartView(context);
+        belowPart = new FlipPartView(context);
+        abovePart = new FlipPartView(context);
 
     }
 
@@ -52,93 +48,81 @@ public class FlipItemView extends LinearLayout {
     public void initData(int direction) {
         this.direction = direction;
         setLayoutDirection(direction);
-        addView(firstPart);
-        addView(secondPart);
-        LinearLayout.LayoutParams layoutParams = (LayoutParams) firstPart.getLayoutParams();
+        addView(belowPart);
+        addView(abovePart);
+        LinearLayout.LayoutParams layoutParams = (LayoutParams) belowPart.getLayoutParams();
         layoutParams.width = LayoutParams.MATCH_PARENT;
         layoutParams.height = LayoutParams.MATCH_PARENT;
         layoutParams.weight = 1;
-        firstPart.setLayoutParams(layoutParams);
-        secondPart.setLayoutParams(layoutParams);
+        belowPart.setLayoutParams(layoutParams);
+        abovePart.setLayoutParams(layoutParams);
 
-        if (direction == FlipLayout.HORIZONTAL) {
-            firstPart.initData(FlipPartView.TYPE_LEFT);
-            secondPart.initData(FlipPartView.TYPE_RIGHT);
-        } else {
-            firstPart.initData(FlipPartView.TYPE_TOP);
-            secondPart.initData(FlipPartView.TYPE_BOTTOM);
-        }
+        belowPart.initData(direction, isLeft ? FlipPartView.TYPE_LEFT_BELOW : FlipPartView.TYPE_RIGHT_BELOW);
+        abovePart.initData(direction, isLeft ? FlipPartView.TYPE_LEFT_ABOVE : FlipPartView.TYPE_RIGHT_ABOVE);
     }
 
     /**
      * 设置bitmap
      *
-     * @param bitmap
+     * @param bitmap1
+     * @param bitmap2
      */
-    public void setBitmap(Bitmap bitmap) {
-        firstPart.setBitmap(bitmap);
-        secondPart.setBitmap(bitmap);
-        firstPart.invalidate();
-        secondPart.invalidate();
+    public void setBitmap(Bitmap bitmap1, Bitmap bitmap2) {
+        belowPart.setBitmap(bitmap1, bitmap2);
+        abovePart.setBitmap(bitmap1, bitmap2);
     }
 
     @Override
     public void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
-//        if (firstPart != null) {
-//            firstPart.draw(canvas);
-//        }
-//        if (secondPart != null) {
-//            secondPart.draw(canvas);
-//        }
     }
 
     /**
      * 恢复正常
      */
     public void reset() {
-        firstPart.setScaleX(1);
-        firstPart.setScaleY(1);
-        secondPart.setScaleX(1);
-        secondPart.setScaleY(1);
+        belowPart.setScaleX(1);
+        belowPart.setScaleY(1);
+        abovePart.setScaleX(1);
+        abovePart.setScaleY(1);
     }
 
     /**
      * 旋转
-     * 1. rate>0  0->1   :上 firstPart ->右(1->1 )  下 secondPart->右 (-1->1 )
-     * 2. rate<0  0->-1  :上 secondPart->左(1->-1)  下 firstPart ->左 ( 1->-1)
+     * 1. rate>0  0->1   :上 belowPart ->右(1->1 )  下 abovePart->右 (-1->1 )
+     * 2. rate<0  0->-1  :上 abovePart->左(1->-1)  下 belowPart ->左 ( 1->-1)
      *
      * @param rate -1 0 1
      */
     public void rotation(float rate) {
         if (direction == FlipLayout.HORIZONTAL) {
-            firstPart.setPivotX(firstPart.getRight() - firstPart.getLeft());
-            secondPart.setPivotX(0);
-            if (isAbove) {
+            belowPart.setPivotX(belowPart.getRight() - belowPart.getLeft());
+            abovePart.setPivotX(0);
+            if (isLeft) {
                 if (rate > 0) {
-                    firstPart.setScaleX((-2 * rate) + 1);
+                    belowPart.setScaleX((-2 * rate) + 1);
                 } else if (rate < 0) {
-                    secondPart.setScaleX((2 * rate) + 1);
+                    abovePart.setScaleX((2 * rate) + 1);
                 }
             } else {
                 if (rate > 0) {
-                    secondPart.setScaleX((2 * rate) - 1);
+                    abovePart.setScaleX((2 * rate) - 1);
                 } else {
-                    firstPart.setScaleX((-2 * rate) - 1);
+                    belowPart.setScaleX((-2 * rate) - 1);
                 }
             }
         } else {
-            if (isAbove) {
+            if (isLeft) {
                 if (rate > 0) {
-                    firstPart.setScaleY(rate);
+                    belowPart.setScaleY(rate);
                 } else if (rate < 0) {
-                    secondPart.setScaleY(rate);
+                    abovePart.setScaleY(rate);
                 }
             } else {
                 if (rate > 0) {
-                    secondPart.setScaleY(rate - 1);
+                    abovePart.setScaleY(rate - 1);
                 } else {
-                    firstPart.setScaleY(rate);
+                    belowPart.setScaleY(rate);
                 }
             }
         }
@@ -146,10 +130,10 @@ public class FlipItemView extends LinearLayout {
     }
 
     public FlipPartView getFirstView() {
-        return firstPart;
+        return belowPart;
     }
 
     public FlipPartView getSecondView() {
-        return secondPart;
+        return abovePart;
     }
 }

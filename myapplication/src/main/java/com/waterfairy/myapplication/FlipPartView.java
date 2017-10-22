@@ -20,31 +20,28 @@ import android.view.View;
 
 public class FlipPartView extends View {
     public static final int TYPE_NO = 0;//左
-    public static final int TYPE_LEFT = 1;//左
-    public static final int TYPE_RIGHT = 2;//右
-    public static final int TYPE_TOP = 3;//上
-    public static final int TYPE_BOTTOM = 4;//下
+    public static final int TYPE_LEFT_BELOW = 1;//左
+    public static final int TYPE_LEFT_ABOVE = 2;//右
+    public static final int TYPE_RIGHT_BELOW = 3;//上
+    public static final int TYPE_RIGHT_ABOVE = 4;//下
     private static final String TAG = "flipPartView";
+    private static final int TYPE_BITMAP_1 = 1;
+    private static final int TYPE_BITMAP_2 = 2;
     private int type;//类型
     private int direction;//方向
 
     //默认背景颜色
     private int defaultBGColor = Color.TRANSPARENT;
 
-    private Bitmap bitmap;//图像
+    private Bitmap bitmap1, bitmap2;//图像
     private float rotation;//角度
     private Paint bitmapPaint;//画笔
 
-    private Rect bitmapRect;
-    private Rect viewRect;
+    private Rect bitmapRect1, bitmapRect2;
+    private Rect viewRect1, viewRect2;
 
     public FlipPartView(Context context) {
-        super(context);
-    }
-
-    public FlipPartView(Context context, int type) {
-        super(context);
-        initData(type);
+        this(context, null);
     }
 
     public FlipPartView(Context context, @Nullable AttributeSet attrs) {
@@ -52,56 +49,56 @@ public class FlipPartView extends View {
         setWillNotDraw(false);
     }
 
-
-    public void initData(int type) {
+    public void initData(int direction, int type) {
+        this.direction = direction;
         this.type = type;
-        //确定方向
-        if (type == TYPE_LEFT || type == TYPE_RIGHT) {
-            direction = FlipLayout.HORIZONTAL;
-        } else if (type == TYPE_TOP || type == TYPE_BOTTOM) {
-            direction = FlipLayout.VERTICAL;
-        }
         //paint
         bitmapPaint = new Paint();
         bitmapPaint.setDither(true);//防抖
         bitmapPaint.setFilterBitmap(true);//位图进行滤波处理
         //防止自动绘制
-        setWillNotDraw(false);
+//        setWillNotDraw(false);
     }
 
-    public void setBitmap(Bitmap bitmap) {
-//        if (this.bitmap != null && !bitmap.isRecycled()) {
-//            this.bitmap.recycle();
-//            bitmap = null;
-//            System.gc();
-//        }
-        this.bitmap = bitmap;
-        calcBitmapRect();
+    public void setBitmap(Bitmap bitmap1, Bitmap bitmap2) {
+        this.bitmap1 = bitmap1;
+        this.bitmap2 = bitmap2;
+        bitmapRect1 = calcBitmapRect(bitmap1);
+        bitmapRect2 = calcBitmapRect(bitmap2);
+        invalidate();
     }
-
 
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
-        if (bitmap != null && !bitmap.isRecycled()) {
+        if (bitmap1 != null && !bitmap1.isRecycled()) {
             Log.i(TAG, "draw: " + type);
-            calcViewRect();
-            canvas.drawBitmap(bitmap, bitmapRect, viewRect, bitmapPaint);
+            viewRect1 = calcViewRect(bitmapRect1);
+            canvas.drawBitmap(bitmap1, bitmapRect1, viewRect1, bitmapPaint);
         } else {
-            //bitmap 为空  ||  bitmap被回收  ||  方向0(数据初始化失败)
+//            bitmap1 为空  ||  bitmap被回收  ||  方向0(数据初始化失败)
             canvas.drawColor(defaultBGColor);
         }
+        if (bitmap2 != null && bitmap2.isRecycled()) {
+            viewRect2 = calcViewRect(bitmapRect2);
+            canvas.drawBitmap(bitmap2, bitmapRect2, viewRect2, bitmapPaint);
+        } else {
+//            bitmap1 为空  ||  bitmap被回收  ||  方向0(数据初始化失败)
+            canvas.drawColor(defaultBGColor);
+        }
+
     }
+
 
     /**
      * 计算画布边界
      */
-    private void calcViewRect() {
-//        if (viewRect == null) {
+    private Rect calcViewRect(Rect bitmapRect) {
         int viewWidth = getRight() - getLeft();
         int viewHeight = getBottom() - getTop();
         float bitmapWidth = bitmapRect.width();
         float bitmapHeight = bitmapRect.height();
+
         boolean isBitmapWidthBig = (bitmapWidth / bitmapHeight) / (viewWidth / (float) viewHeight) >= 1;
         int left = 0, right = 0, top = 0, bottom = 0;
 
@@ -110,99 +107,87 @@ public class FlipPartView extends View {
                 float tempHeight = viewWidth / (bitmapWidth / bitmapHeight);
                 top = (int) ((viewHeight - tempHeight) / 2);
                 bottom = (int) (top + tempHeight);
-//                if (type == TYPE_RIGHT) {
-//                    // 单独使用 去除该判断
-//                    left = viewWidth;
-//                    right = 2 * viewWidth;
-//                } else {
-                    right = viewWidth;
-                    left = 0;
-//                }
-            } else if (type == TYPE_LEFT) {
+                right = viewWidth;
+                left = 0;
+            } else if (type == TYPE_LEFT_BELOW || type == TYPE_LEFT_ABOVE) {
                 top = 0;
                 bottom = viewHeight;
                 right = viewWidth;
                 left = (int) (viewWidth - (bitmapWidth / bitmapHeight) * viewHeight);
-            } else if (type == TYPE_RIGHT) {
+            } else if (type == TYPE_RIGHT_ABOVE || type == TYPE_RIGHT_BELOW) {
                 top = 0;
                 bottom = viewHeight;
-//                    单独使用
-                  left = 0;
-                  right = (int) ((bitmapWidth / bitmapHeight) * viewHeight);
-//                left = viewWidth;
-//                right = (int) ((bitmapWidth / bitmapHeight) * viewHeight) + left;
+                left = 0;
+                right = (int) ((bitmapWidth / bitmapHeight) * viewHeight);
             }
         } else if (direction == FlipLayout.VERTICAL) {
             if (!isBitmapWidthBig) {
                 float tempWidth = viewHeight / (bitmapHeight / bitmapWidth);
                 left = (int) ((viewWidth - tempWidth) / 2);
                 right = (int) (left + tempWidth);
-//                if (type == TYPE_BOTTOM) {
-//                    //单独使用 去除该判断
-//                    top = viewHeight;
-//                    bottom = 2 * viewHeight;
-//                } else {
-                    bottom = viewHeight;
-                    top = 0;
-//                }
-            } else if (type == TYPE_TOP) {
+                bottom = viewHeight;
+                top = 0;
+            } else if (type == TYPE_LEFT_BELOW || type == TYPE_LEFT_ABOVE) {
                 left = 0;
                 right = viewWidth;
                 top = (int) (viewHeight - (bitmapHeight / bitmapWidth) * viewWidth);
                 bottom = viewHeight;
-            } else if (type == TYPE_BOTTOM) {
+            } else if (type == TYPE_RIGHT_ABOVE || type == TYPE_RIGHT_BELOW) {
                 left = 0;
                 right = viewWidth;
-//                单独使用
                 top = 0;
                 bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth);
-//                top = viewHeight;
-//                bottom = (int) ((bitmapHeight / bitmapWidth) * viewWidth) + top;
             }
-
         }
-        viewRect = new Rect(left, top, right, bottom);
-//        }
+        return new Rect(left, top, right, bottom);
     }
 
     /**
      * 计算图片边界
+     *
+     * @param bitmap
      */
-    private void calcBitmapRect() {
+    private Rect calcBitmapRect(Bitmap bitmap) {
         if (bitmap != null && !bitmap.isRecycled()) {
             int bitmapWidth = 0, bitmapHeight = 0;
             bitmapWidth = bitmap.getWidth();
             bitmapHeight = bitmap.getHeight();
             int left = 0, right = 0, top = 0, bottom = 0;
+            if (direction == FlipLayout.HORIZONTAL) {
+                left = 0;
+                right = bitmapWidth / 2;
+                top = 0;
+                bottom = bitmapHeight;
+            } else {
+
+            }
             switch (type) {
-                case TYPE_LEFT:
-                    left = 0;
-                    right = bitmapWidth / 2;
-                    top = 0;
-                    bottom = bitmapHeight;
+                case TYPE_LEFT_BELOW:
+
                     break;
-                case TYPE_RIGHT:
+                case TYPE_LEFT_ABOVE:
                     left = bitmapWidth - bitmapWidth / 2 + 1;
                     right = bitmapWidth;
                     top = 0;
                     bottom = bitmapHeight;
                     break;
-                case TYPE_TOP:
+                case TYPE_RIGHT_BELOW:
                     left = 0;
                     right = bitmapWidth;
                     top = 0;
                     bottom = bitmapHeight / 2;
                     break;
-                case TYPE_BOTTOM:
+                case TYPE_RIGHT_ABOVE:
                     left = 0;
                     right = bitmapWidth;
                     top = bitmapHeight - bitmapHeight / 2 + 1;
                     bottom = bitmapHeight;
                     break;
             }
-            bitmapRect = new Rect(left, top, right, bottom);
+            return new Rect(left, top, right, bottom);
+
         } else {
-            bitmapRect = new Rect(0, 0, 0, 0);
+            return new Rect(0, 0, 0, 0);
         }
     }
 
